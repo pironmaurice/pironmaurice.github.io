@@ -50,7 +50,8 @@
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
+            gap: 50px;
+            margin-top: 40px;
         }
         
         .tile {
@@ -69,8 +70,8 @@
         }
         
         .tile:hover {
-            transform: translateY(-5px);
             box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            background-color: #d7e1eb;
         }
 
         .match-number {
@@ -112,9 +113,7 @@
         
         .audio-player {
             width: 100%;
-            margin: 0; /* Pushes the audio player to the bottom */
-            opacity: 0;
-            height: 0;
+            margin-top: 20px; /* Pushes the audio player to the bottom */
           
         }
         
@@ -23480,6 +23479,30 @@
                 hr.style.display = 'none';
             }
         };
+
+        /**
+         * Lädt die Seite neu, wenn der letzte Besuch länger als 24 Stunden her ist.
+         * Verwendet den lokalen Speicher (localStorage), um den Zeitstempel des letzten Besuchs zu speichern.
+         */
+        function reloadIfStale() {
+            const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
+            const lastVisit = localStorage.getItem('lastVisitTimestamp');
+            const now = Date.now();
+
+            // Überprüft, ob der Zeitstempel existiert und die Differenz größer als 24 Stunden ist
+            if (lastVisit && (now - lastVisit > twentyFourHoursInMs)) {
+                // Die Seite neu laden und den Cache umgehen
+                console.log('Seite wurde neu geladen, da die Daten älter als 24 Stunden waren.');
+                localStorage.setItem('lastVisitTimestamp', now); // Zeitstempel aktualisieren
+                location.reload(true);
+            } else {
+                // Zeitstempel für den nächsten Besuch speichern, falls er noch nicht existiert oder noch gültig ist
+                localStorage.setItem('lastVisitTimestamp', now);
+            }
+        }
+
+        // Führt die Funktion aus, sobald das DOM geladen ist
+        document.addEventListener('DOMContentLoaded', reloadIfStale);
     </script>
 
 </body>
