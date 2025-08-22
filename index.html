@@ -52,12 +52,7 @@
             margin-bottom: 2em;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-        }
-        
+      
         .tile {
             background-color: var(--color-card);
             border-radius: 12px;
@@ -71,6 +66,8 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            margin: 40px auto;
+            max-width: 320px;
         }
   
         .konferenz-tile { 
@@ -23578,6 +23575,54 @@
 
         // Führt die Funktion aus, sobald das DOM geladen ist
         document.addEventListener('DOMContentLoaded', reloadIfStale);
+
+           // URL Ihres Ladebildes
+    const loaderImageUrl = 'https://upload.wikimedia.org/wikipedia/en/thumb/d/df/Bundesliga_logo_%282017%29.svg/360px-Bundesliga_logo_%282017%29.svg.png';
+
+// Funktion zum Erstellen und Anzeigen des Loaders
+function showLoader() {
+    // Erstelle den Hintergrund-Container für den Loader
+    const loaderOverlay = document.createElement('div');
+    loaderOverlay.id = 'loader-overlay';
+    loaderOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 1);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-in-out;
+        opacity: 1;
+    `;
+
+    // Erstelle das Bild-Element für den Loader
+    const loaderImage = document.createElement('img');
+    loaderImage.src = loaderImageUrl;
+    loaderImage.alt = 'Loading...';
+    loaderImage.style.cssText = `
+        width: 80px;
+        height: 80px;
+    `;
+
+    loaderOverlay.appendChild(loaderImage);
+    document.body.appendChild(loaderOverlay);
+
+    // Nach 2 Sekunden den Loader ausblenden
+    setTimeout(() => {
+        loaderOverlay.style.opacity = '0';
+        // Warte auf das Ende der Transition, bevor das Element entfernt wird
+        loaderOverlay.addEventListener('transitionend', () => {
+            document.body.removeChild(loaderOverlay);
+        });
+    }, 3000); // 2000 Millisekunden = 2 Sekunden
+}
+
+// Zeigt den Loader, sobald die Seite geladen ist
+window.addEventListener('load', showLoader);
     </script>
 
 </body>
