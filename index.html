@@ -52,7 +52,6 @@
             margin-bottom: 2em;
         }
 
-      
         .tile {
             background-color: var(--color-card);
             border-radius: 12px;
@@ -70,14 +69,43 @@
             max-width: 320px;
         }
   
-        .konferenz-tile { 
-          border: 2px solid #e7879d;
-          margin: 30px 0;
+        .konferenz-tile {
+            border: 2px solid var(--color-secondary);
+            margin: 30px auto;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            background-color: var(--color-card);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            max-width: 320px;
+        }
+
+        .konferenz-tile:hover {
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            background-color: #d7e1eb;
+            transform: translateY(-2px);
         }
         
         .tile:hover {
             box-shadow: 0 6px 15px rgba(0,0,0,0.1);
             background-color: #d7e1eb;
+            transform: translateY(-2px);
+        }
+
+        .tile.past-match {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: #e0e0e0;
+        }
+
+        .tile.past-match:hover {
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transform: none;
+            background-color: #e0e0e0;
         }
 
         .match-number {
@@ -105,7 +133,7 @@
             margin: 0;
             font-size: 1.2em;
             color: var(--color-text);
-            min-height: 2.4em; /* Ensures consistent height for teams with 2 lines */
+            min-height: 2.4em;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -117,14 +145,21 @@
             margin-top: 10px;
             color: var(--color-muted);
         }
+
+        .play-indicator {
+            margin-top: 20px;
+            color: var(--color-primary);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9em;
+        }
         
         .audio-player {
             width: 100%;
-            margin-top: 20px; /* Pushes the audio player to the bottom */
-            max-width: 250px;
+            margin: 20px auto 0 auto;
+            max-width: 80%;
         }
         
-        /* Paginierung-Styles */
         .pagination {
             display: flex;
             justify-content: center;
@@ -162,7 +197,6 @@
             margin: 30px 0;
         }
 
-        /* Toggle-Switch-Styles */
         .league-toggle {
             text-align: center;
             margin-top: 2em;
@@ -191,6 +225,26 @@
         .league-section.hidden {
             display: none;
         }
+        
+        #loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-in-out;
+            opacity: 1;
+        }
+
+        #loader-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -216,9 +270,11 @@
             <div id="bl2-grid" class="grid"></div>
             <div id="bl2-pagination" class="pagination"></div>
         </div>
-
     </div>
 
+    <div id="loader-overlay">
+        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/d/df/Bundesliga_logo_%282017%29.svg/360px-Bundesliga_logo_%282017%29.svg.png" alt="Loading..." style="width: 80px; height: 80px;">
+    </div>
 
     <script type="application/json" id="matchDataBl1">
       [
@@ -23293,9 +23349,20 @@
       ]
       </script>
       
+        
+    </script>
 
     <script>
-        // Funktion, um alle anderen Player zu pausieren
+        function hideLoader() {
+            const loader = document.getElementById('loader-overlay');
+            if (loader) {
+                loader.classList.add('hidden');
+                setTimeout(() => {
+                    loader.remove();
+                }, 600);
+            }
+        }
+
         function pauseAllPlayers(currentPlayer) {
             var allPlayers = document.getElementsByTagName('audio');
             for (var i = 0; i < allPlayers.length; i++) {
@@ -23305,36 +23372,54 @@
             }
         }
         
-        // Erstellt eine Konferenz-Kachel
-        function createKonferenzTile(leagueShortcut, grid) {
+        function createKonferenzTile(leagueShortcut, grid, saturdayDate) {
             var tile = document.createElement('div');
             tile.className = 'tile konferenz-tile';
 
             var title = document.createElement('h3');
-            title.innerHTML = 'Konferenz Samstagsspiele <br>' +  (leagueShortcut === 'bl1' ? '1' : '2') + '. Bundesliga';
+            const titleText = 'Konferenz Samstagsspiele';
+            title.textContent = titleText;
             tile.appendChild(title);
             
-            var player = document.createElement('audio');
-            player.className = 'audio-player';
-            player.controls = true;
-            player.src = 'https://dispatcher.rndfnk.com/wdr/sportschau/liga' + (leagueShortcut === 'bl1' ? '1' : '2') + 'konferenz/mp3/128/stream.mp3';
-            
-            tile.appendChild(player);
+            var infoElement = document.createElement('div');
+            infoElement.className = 'info';
+            infoElement.textContent = saturdayDate ? saturdayDate + ', 15:30 Uhr' : '';
+            tile.appendChild(infoElement);
+
+            const playIndicator = document.createElement('div');
+            playIndicator.className = 'play-indicator';
+            playIndicator.textContent = 'Klicken zum Starten';
+            tile.appendChild(playIndicator);
 
             tile.onclick = function() {
-                if (player.paused) {
-                    pauseAllPlayers(player);
-                    player.load();
-                    player.play();
+                let player = tile.querySelector('audio');
+                const streamUrl = 'https://dispatcher.rndfnk.com/wdr/sportschau/liga' + (leagueShortcut === 'bl1' ? '1' : '2') + 'konferenz/mp3/128/stream.mp3';
+
+                if (player) {
+                    if (player.paused) {
+                        player.src = streamUrl + '?' + new Date().getTime(); // NEU: Stream neu laden
+                        pauseAllPlayers(player);
+                        player.load();
+                        player.play();
+                    } else {
+                        player.pause();
+                    }
                 } else {
-                    player.pause();
+                    player = document.createElement('audio');
+                    player.className = 'audio-player';
+                    player.controls = true;
+                    player.src = streamUrl;
+                    
+                    pauseAllPlayers(player);
+                    tile.removeChild(playIndicator);
+                    tile.appendChild(player);
+                    player.play();
                 }
             };
             
-            grid.appendChild(tile);
+            grid.insertBefore(tile, grid.firstChild);
         }
 
-        // Erstellt eine einzelne Spielkachel
         function createTile(matchData, leagueShortcut, matchNumber) {
             var gridId = leagueShortcut + '-grid';
             var grid = document.getElementById(gridId);
@@ -23343,6 +23428,17 @@
             
             var tile = document.createElement('div');
             tile.className = 'tile';
+
+            const matchDate = new Date(matchData.matchDateTime);
+            const today = new Date();
+            matchDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            
+            const isPastMatch = matchDate < today;
+
+            if (isPastMatch) {
+                tile.classList.add('past-match');
+            }
 
             var matchNumberElement = document.createElement('div');
             matchNumberElement.className = 'match-number';
@@ -23367,34 +23463,82 @@
             var title = document.createElement('h3');
             title.textContent = matchData.team1.teamName + " vs. " + matchData.team2.teamName;
             tile.appendChild(title);
-            
-            var player = document.createElement('audio');
-            player.className = 'audio-player';
-            player.controls = true;
-            player.src = url;
-            
-            tile.appendChild(player);
 
-            tile.onclick = function() {
-                if (player.paused) {
-                    pauseAllPlayers(player);
-                    player.load();
-                    player.play();
-                } else {
-                    player.pause();
-                }
-            };
+            var date = new Date(matchData.matchDateTime);
+            var options = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+            var formattedDateTime = date.toLocaleDateString('de-DE', options) + ' Uhr';
+            
+            var infoElement = document.createElement('div');
+            infoElement.className = 'info';
+            infoElement.textContent = formattedDateTime;
+            tile.appendChild(infoElement);
+            
+            const playIndicator = document.createElement('div');
+            playIndicator.className = 'play-indicator';
+            if (isPastMatch) {
+                playIndicator.textContent = 'Spiel vorbei';
+            } else {
+                playIndicator.textContent = 'Klicken zum Starten';
+            }
+            tile.appendChild(playIndicator);
+
+            if (!isPastMatch) {
+                tile.onclick = function() {
+                    let player = tile.querySelector('audio');
+                    
+                    if (player) {
+                        if (player.paused) {
+                            player.src = url + '?' + new Date().getTime(); // NEU: Stream neu laden
+                            pauseAllPlayers(player);
+                            player.load();
+                            player.play();
+                        } else {
+                            player.pause();
+                        }
+                    } else {
+                        player = document.createElement('audio');
+                        player.className = 'audio-player';
+                        player.controls = true;
+                        player.src = url;
+                        
+                        pauseAllPlayers(player);
+                        tile.removeChild(playIndicator);
+                        tile.appendChild(player);
+                        player.play();
+                    }
+                };
+            }
 
             grid.appendChild(tile);
         }
 
-        // Rendert die Spielkacheln für einen bestimmten Spieltag
         function renderMatches(leagueShortcut, matches) {
             const grid = document.getElementById(leagueShortcut + '-grid');
             grid.innerHTML = '';
             
-            // NEUE LOGIK: Die Konferenz-Kachel wird jetzt immer hinzugefügt.
-            createKonferenzTile(leagueShortcut, grid);
+            const hasFutureMatches = matches.some(match => {
+                const matchDate = new Date(match.matchDateTime);
+                const today = new Date();
+                matchDate.setHours(0, 0, 0, 0);
+                today.setHours(0, 0, 0, 0);
+                return matchDate >= today;
+            });
+            
+            let saturdayDate = null;
+            const saturdayMatch = matches.find(match => {
+                const matchDate = new Date(match.matchDateTime);
+                return matchDate.getDay() === 6;
+            });
+
+            if (saturdayMatch) {
+                const date = new Date(saturdayMatch.matchDateTime);
+                const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+                saturdayDate = date.toLocaleDateString('de-DE', options);
+            }
+
+            if (hasFutureMatches) {
+                createKonferenzTile(leagueShortcut, grid, saturdayDate);
+            }
            
             const titleElement = document.getElementById(leagueShortcut + '-title');
             if (matches && matches.length > 0) {
@@ -23410,7 +23554,6 @@
             }
         }
         
-        // Rendert die Paginierung für eine bestimmte Liga
         function renderPagination(leagueShortcut, allGroups, currentGroup) {
             const paginationContainer = document.getElementById(leagueShortcut + '-pagination');
             paginationContainer.innerHTML = '';
@@ -23436,7 +23579,6 @@
             });
         }
 
-        // Lädt und verarbeitet die Daten für eine bestimmte Liga
         const leagueDataCache = {};
         function loadLeagueData(leagueShortcut) {
              if (leagueDataCache[leagueShortcut]) {
@@ -23492,21 +23634,20 @@
             return currentGroup;
         }
 
-        // Hauptfunktion zum Initialisieren der Seite
         window.onload = () => {
             const bl1Data = loadLeagueData('bl1');
             const bl2Data = loadLeagueData('bl2');
 
-            // Umschalter-Logik
+            hideLoader();
+
             const toggleBl1 = document.getElementById('toggleBl1');
             const toggleBl2 = document.getElementById('toggleBl2');
             const sectionBl1 = document.getElementById('bl1-section');
             const sectionBl2 = document.getElementById('bl2-section');
             const hr = document.querySelector('hr');
             
-            // Funktion zum Umschalten, die jetzt nur die UI-Elemente verwaltet
             function switchLeague(league) {
-                pauseAllPlayers(null); // Alle Player stoppen beim Umschalten
+                pauseAllPlayers(null);
                 
                 if (league === 'bl1') {
                     toggleBl1.classList.add('active');
@@ -23525,105 +23666,43 @@
                 }
             }
             
-            // Event-Listener für die Buttons
             toggleBl1.onclick = () => {
                 switchLeague('bl1');
-                loadLeagueData('bl1'); // Daten neu laden und UI aktualisieren
+                loadLeagueData('bl1');
             };
             toggleBl2.onclick = () => {
                 switchLeague('bl2');
-                loadLeagueData('bl2'); // Daten neu laden und UI aktualisieren
+                loadLeagueData('bl2');
             };
             
-
-            // Logik beim Laden der Seite
             if (bl1Data) {
-                // Standard: 1. Bundesliga anzeigen
                 switchLeague('bl1');
                 if (!bl2Data) {
                     toggleBl2.style.display = 'none';
                     hr.style.display = 'none';
                 }
             } else if (bl2Data) {
-                // Wenn 1. Bundesliga keine Daten hat, starte mit der 2.
                 switchLeague('bl2');
                 toggleBl1.style.display = 'none';
                 hr.style.display = 'none';
             }
         };
 
-        /**
-         * Lädt die Seite neu, wenn der letzte Besuch länger als 24 Stunden her ist.
-         * Verwendet den lokalen Speicher (localStorage), um den Zeitstempel des letzten Besuchs zu speichern.
-         */
         function reloadIfStale() {
             const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
             const lastVisit = localStorage.getItem('lastVisitTimestamp');
             const now = Date.now();
 
-            // Überprüft, ob der Zeitstempel existiert und die Differenz größer als 24 Stunden ist
             if (lastVisit && (now - lastVisit > twentyFourHoursInMs)) {
-                // Die Seite neu laden und den Cache umgehen
                 console.log('Seite wurde neu geladen, da die Daten älter als 24 Stunden waren.');
-                localStorage.setItem('lastVisitTimestamp', now); // Zeitstempel aktualisieren
+                localStorage.setItem('lastVisitTimestamp', now);
                 location.reload(true);
             } else {
-                // Zeitstempel für den nächsten Besuch speichern, falls er noch nicht existiert oder noch gültig ist
                 localStorage.setItem('lastVisitTimestamp', now);
             }
         }
 
-        // Führt die Funktion aus, sobald das DOM geladen ist
         document.addEventListener('DOMContentLoaded', reloadIfStale);
-
-           // URL Ihres Ladebildes
-    const loaderImageUrl = 'https://upload.wikimedia.org/wikipedia/en/thumb/d/df/Bundesliga_logo_%282017%29.svg/360px-Bundesliga_logo_%282017%29.svg.png';
-
-// Funktion zum Erstellen und Anzeigen des Loaders
-function showLoader() {
-    // Erstelle den Hintergrund-Container für den Loader
-    const loaderOverlay = document.createElement('div');
-    loaderOverlay.id = 'loader-overlay';
-    loaderOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(255, 255, 255, 1);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        transition: opacity 0.5s ease-in-out;
-        opacity: 1;
-    `;
-
-    // Erstelle das Bild-Element für den Loader
-    const loaderImage = document.createElement('img');
-    loaderImage.src = loaderImageUrl;
-    loaderImage.alt = 'Loading...';
-    loaderImage.style.cssText = `
-        width: 80px;
-        height: 80px;
-    `;
-
-    loaderOverlay.appendChild(loaderImage);
-    document.body.appendChild(loaderOverlay);
-
-    // Nach 2 Sekunden den Loader ausblenden
-    setTimeout(() => {
-        loaderOverlay.style.opacity = '0';
-        // Warte auf das Ende der Transition, bevor das Element entfernt wird
-        loaderOverlay.addEventListener('transitionend', () => {
-            document.body.removeChild(loaderOverlay);
-        });
-    }, 4000); // 2000 Millisekunden = 2 Sekunden
-}
-
-// Zeigt den Loader, sobald die Seite geladen ist
-window.addEventListener('load', showLoader);
     </script>
-
 </body>
 </html>
